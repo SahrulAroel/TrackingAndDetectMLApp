@@ -44,36 +44,77 @@ Pastikan Anda telah menginstal:
 ```bash
 git clone [https://github.com/username-anda/nama-repo-anda.git](https://github.com/username-anda/nama-repo-anda.git)
 cd nama-repo-anda
+```
 
-3. Setup Environment (PENTING: NVIDIA CUDA) ⚠️
+### 3. Setup Environment (PENTING: NVIDIA CUDA) ⚠️
 Agar model AI berjalan cepat menggunakan GPU NVIDIA, Anda HARUS menginstal PyTorch versi CUDA. Jangan instal PyTorch biasa.
 
-Langkah 1: Buat Virtual Environment (Disarankan)
+#### Langkah 1: Buat Virtual Environment (Disarankan)
+```bash
 python -m venv venv
 # Windows
 venv\Scripts\activate
 # Linux/Mac
 source venv/bin/activate
+```
 
-Langkah 2: Instal PyTorch dengan dukungan CUDACek versi CUDA Anda (misal 11.8 atau 12.1) dan jalankan perintah yang sesuai:Bash# Contoh untuk CUDA 11.8
+#### Langkah 2: Instal PyTorch dengan dukungan CUDACek versi CUDA Anda (misal 11.8 atau 12.1) dan jalankan perintah yang sesuai:
+```
+Contoh untuk CUDA 11.8
 pip3 install torch torchvision torchaudio --index-url [https://download.pytorch.org/whl/cu118](https://download.pytorch.org/whl/cu118)
-Jika menggunakan versi CUDA lain, cek command yang sesuai di pytorch.org.Langkah 3: Instal Dependensi LainnyaBashpip install flask opencv-python ultralytics numpy matplotlib flask-cors pandas
-⚙️ Konfigurasi ProjectSebelum menjalankan aplikasi, sesuaikan konfigurasi path video dan dataset di file app.py:Python# app.py
+```
+Jika menggunakan versi CUDA lain, cek command yang sesuai di pytorch.org.
 
+#### Langkah 3: Instal Dependensi Lainnya
+```
+pip install flask opencv-python ultralytics numpy matplotlib flask-cors pandas
+```
+
+## ⚙️ Konfigurasi Project
+Sebelum menjalankan aplikasi, sesuaikan konfigurasi path video dan dataset di file app.py:
+app.py
+```
 # 1. Sesuaikan path video sumber (Bisa diganti URL RTSP CCTV)
 VIDEO_SOURCE_MOBIL = 'video/assa.mp4'
 VIDEO_SOURCE_MOTOR = 'video/TestMotor.mp4' 
 
 # 2. Pastikan struktur folder dataset sesuai untuk fitur Evaluasi
 BASE_DATASET_PATH = 'dataset'
-Pastikan struktur folder dataset Anda terlihat seperti ini:dataset/
+```
+
+Pastikan struktur folder dataset Anda terlihat seperti ini:
+```
+dataset/
 ├── train/
 ├── valid/
 │   ├── images/
 │   └── labels/
 └── test/
-▶️ Cara MenjalankanInisialisasi DatabaseAplikasi akan otomatis membuat file laporan_kendaraan.db saat pertama kali dijalankan berkat fungsi init_db().Jalankan Flask ServerBashpython app.py
-Akses DashboardBuka browser dan kunjungi:http://localhost:5000📖 API DocumentationAplikasi ini menyediakan REST API untuk integrasi frontend:MethodEndpointDeskripsiGET/api/statusMengambil status counting mobil (FPS, Total Count).POST/api/startMemulai proses AI detection mobil.POST/api/stopMenghentikan proses AI detection mobil.GET/api/motor/statusMengambil status counting motor.GET/api/vehicle-reportsMengambil data lengkap laporan untuk grafik & tabel.POST/api/run_evaluationMenjalankan evaluasi model (YOLO vs SSD vs Ensemble).📂 Struktur Folder├── app.py                  # Entry point aplikasi Flask
+```
+## ▶️ Cara Menjalankan
+
+Inisialisasi Database
+Aplikasi akan otomatis membuat file laporan_kendaraan.db saat pertama kali dijalankan berkat fungsi init_db().
+Jalankan Flask Server
+```
+python app.py
+```
+Akses Dashboard
+Buka browser dan kunjungi:http://localhost:5000
+
+## 📖 API Documentation
+Aplikasi ini menyediakan REST API untuk integrasi frontend:
+MethodEndpointDeskripsi
+** GET/api/status Mengambil status counting mobil (FPS, Total Count).
+** POST/api/start Memulai proses AI detection mobil.
+** POST/api/stop Menghentikan proses AI detection mobil.
+** GET/api/motor/status Mengambil status counting motor.
+** GET/api/vehicle-reports Mengambil data lengkap laporan untuk grafik & tabel.
+** POST/api/run_evaluation Menjalankan evaluasi model (YOLO vs SSD vs Ensemble).
+
+## 📂 Struktur Folder
+```
+├── app.py                  # Entry point aplikasi Flask
 ├── ai_engine.py            # Core logic deteksi & tracking (VehicleDetector)
 ├── ai_evaluator.py         # Modul evaluasi model (ModelEvaluator)
 ├── video/                  # Folder simpan file video testing
@@ -84,4 +125,15 @@ Akses DashboardBuka browser dan kunjungi:http://localhost:5000📖 API Documenta
 │   ├── antrian_motor.html
 │   └── evaluasi.html
 └── static/                 # CSS, JS, Images
-🤝 KontribusiPull requests dipersilakan. Untuk perubahan besar, harap buka issue terlebih dahulu untuk mendiskusikan apa yang ingin Anda ubah.Fork project iniBuat feature branch (git checkout -b feature/AmazingFeature)Commit perubahan Anda (git commit -m 'Add some AmazingFeature')Push ke branch (git push origin feature/AmazingFeature)Buka Pull Request📝 LicenseDistributed under the MIT License. See LICENSE for more information.
+```
+
+## 🤝 KontribusiPull requests dipersilakan. 
+Untuk perubahan besar, harap buka issue terlebih dahulu untuk mendiskusikan apa yang ingin Anda ubah. 
+* Fork project ini
+* Buat feature branch (git checkout -b feature/AmazingFeature)
+* Commit perubahan Anda (git commit -m 'Add some AmazingFeature')
+* Push ke branch (git push origin feature/AmazingFeature)
+* Buka Pull Request
+
+## 📝 LicenseDistributed under the MIT License. 
+See LICENSE for more information.
