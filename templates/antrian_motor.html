@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Antrian Motor - Sistem AI{% endblock %}
+
+{% block page_title %}DASHBOARD ANTRIAN MOTOR{% endblock %}
+
+{% block head_extra %}
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'primary': '#5D3EBC',
+                    'primary-dark': '#4A2F9B',
+                    'primary-light': '#F4F2FF',
+                    'secondary': '#3B82F6',
+                    'accent': '#10B981',
+                    'error': '#EF4444',
+                    'warning': '#F59E0B',
+                },
+            }
+        }
+    };
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6 p-4 lg:p-6">
+    <section class="w-full">
+        <div class="video-container shadow-2xl mb-4 relative overflow-hidden rounded-xl bg-black aspect-video lg:h-[500px]">
+            <img id="videoPlayerMotor" src="{{ url_for('video_feed_motor') }}?source=motor" alt="Live Stream Motor" 
+                 class="w-full h-full object-cover"
+                 onerror="this.onerror=null; this.style.display='none'; document.getElementById('loadingOverlayMotor').style.display='flex';">
+            
+            <div class="absolute top-4 left-4 flex gap-2">
+                <div class="bg-black/70 text-white text-xs font-mono px-2 py-1 rounded backdrop-blur-sm">{{ now.strftime('%H:%M:%S') }}</div>
+            </div>
+            
+            <div class="absolute top-4 right-4">
+                <button class="bg-white/90 text-gray-900 px-4 py-1.5 rounded-full font-semibold shadow-lg text-sm backdrop-blur-sm">
+                    CCTV-02: Gate Motor
+                </button>
+            </div>
+
+            <div id="loadingOverlayMotor" class="absolute inset-0 bg-black/80 flex items-center justify-center flex-col z-10 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                <p class="text-white font-semibold">Menghubungkan ke Server...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 mdc-card p-6 h-full">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-1">Kontrol Deteksi Motor</h3>
+                            <p class="text-sm text-gray-500">Kelola proses deteksi motor secara real-time</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-xs text-gray-500">Status Sistem</span>
+                                <span id="statusTextMotor" class="font-bold text-error flex items-center gap-2">
+                                    <span class="material-icons-round text-base">stop_circle</span>
+                                    STOPPED
+                                </span>
+                            </div>
+                            
+                            <div class="h-8 w-px bg-gray-200"></div>
+                            
+                            <div class="flex flex-col">
+                                <span class="text-xs text-gray-500">Kecepatan Proses</span>
+                                <span id="fpsTextMotor" class="font-bold text-accent font-mono">0 FPS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button id="btnStopMotor" 
+                                class="mdc-button mdc-button--outlined disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-6 py-2.5 font-medium transition-all"
+                                disabled>
+                            <span class="material-icons-round mr-2">stop</span>
+                            Stop
+                        </button>
+                        
+                        <button id="btnStartMotor" 
+                                class="mdc-button mdc-button--contained bg-primary hover:bg-primary-dark text-white rounded-lg px-6 py-2.5 font-medium shadow-lg transition-all">
+                            <span class="material-icons-round mr-2">play_arrow</span>
+                            Start AI
+                        </button>
+
+                        <button onclick="resetMotorSystem()" class="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm" title="Reset Data">
+                            <span class="material-icons-round">restart_alt</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdc-card p-6 bg-gradient-to-br from-primary-light to-white border-l-4 border-primary shadow-lg h-full">
+                <div class="flex items-center justify-between h-full">
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="p-3 bg-primary text-white rounded-xl shadow-md">
+                                <span class="material-icons-round text-2xl">two_wheeler</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 text-lg uppercase tracking-wider">Golongan II</h3>
+                                <p class="text-xs text-primary font-medium">KATEGORI: MOTOR</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-1">
+                            <p class="text-sm text-gray-500">Total Kendaraan</p>
+                            <div class="flex items-baseline gap-1">
+                                <span id="totalMotor" class="text-5xl font-black text-primary">0</span>
+                                <span class="text-gray-400 font-bold uppercase text-xs">Unit</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden sm:block opacity-10">
+                        <span class="material-icons-round text-8xl">motorcycle</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Variables untuk Motor
+    let motorAiRunning = false;
+    let motorPollingInterval;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initMotorEventListeners();
+        startMotorPolling();
+    });
+    
+    function initMotorEventListeners() {
+        const btnStart = document.getElementById('btnStartMotor');
+        const btnStop = document.getElementById('btnStopMotor');
+        
+        if (btnStart) btnStart.addEventListener('click', startMotorAI);
+        if (btnStop) btnStop.addEventListener('click', stopMotorAI);
+    }
+    
+    // --- 1. START AI (Hit API Python) ---
+    async function startMotorAI() {
+        try {
+            const response = await fetch('/api/motor/start', { method: 'POST' });
+            if (response.ok) {
+                motorAiRunning = true;
+                updateMotorStatusUI(true);
+                
+                // Refresh gambar video agar buffer hilang
+                const videoImg = document.getElementById('videoPlayerMotor');
+                videoImg.src = "{{ url_for('video_feed_motor') }}?" + new Date().getTime();
+                
+                showNotification('Sistem deteksi motor aktif', 'success');
+            }
+        } catch (e) { console.error(e); }
+    }
+    
+    // --- 2. STOP AI (Hit API Python) ---
+    async function stopMotorAI() {
+        try {
+            const response = await fetch('/api/motor/stop', { method: 'POST' });
+            if (response.ok) {
+                motorAiRunning = false;
+                updateMotorStatusUI(false);
+                showNotification('Sistem deteksi dihentikan', 'info');
+            }
+        } catch (e) { console.error(e); }
+    }
+    
+    // --- 3. POLLING STATUS (Ambil Data Real-time) ---
+    function startMotorPolling() {
+        if (motorPollingInterval) clearInterval(motorPollingInterval);
+        motorPollingInterval = setInterval(fetchMotorStatus, 1000); // Update tiap 1 detik
+    }
+    
+    async function fetchMotorStatus() {
+        try {
+            const response = await fetch('/api/motor/status');
+            const data = await response.json();
+            
+            const jumlahMotor = data.counts.motor || data.counts['Golongan II'] || 0;
+            
+            // Update UI Total Count
+            // data.counts.motor diambil dari dictionary counts di Python
+            document.getElementById('totalMotor').textContent = jumlahMotor;
+
+            // Update UI FPS
+            document.getElementById('fpsTextMotor').textContent = data.fps.toFixed(1) + " FPS";
+            
+            // Sinkronisasi tombol jika browser di-refresh
+            if (data.running !== motorAiRunning) {
+                motorAiRunning = data.running;
+                updateMotorStatusUI(motorAiRunning);
+            }
+            
+        } catch (error) {
+            console.error('Error fetching motor status:', error);
+        }
+    }
+    
+    // --- 4. UPDATE UI ---
+    function updateMotorStatusUI(isRunning) {
+        const statusText = document.getElementById('statusTextMotor');
+        const btnStart = document.getElementById('btnStartMotor');
+        const btnStop = document.getElementById('btnStopMotor');
+        
+        if (isRunning) {
+            statusText.innerHTML = '<span class="material-icons-round text-base text-accent animate-pulse">play_circle</span> PROCESSING';
+            statusText.className = "font-bold text-accent flex items-center gap-2";
+            btnStart.disabled = true;
+            btnStart.classList.add('opacity-50');
+            btnStop.disabled = false;
+            btnStop.classList.remove('opacity-50');
+        } else {
+            statusText.innerHTML = '<span class="material-icons-round text-base">stop_circle</span> STOPPED';
+            statusText.className = "font-bold text-error flex items-center gap-2";
+            btnStart.disabled = false;
+            btnStart.classList.remove('opacity-50');
+            btnStop.disabled = true;
+            btnStop.classList.add('opacity-50');
+        }
+    }
+    
+    function resetMotorSystem() {
+        // Fitur reset di Python belum dibuat endpointnya, 
+        // tapi bisa ditambahkan dengan mereset variable global 'motor_counts' di app.py
+        alert("Fitur Reset Server belum diimplementasikan di endpoint API."); 
+    }
+</script>
+{% endblock %}

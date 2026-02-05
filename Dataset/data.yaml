@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['Golongan II', 'Golongan IVA', 'Golongan IVB', 'Golongan VB']
+
+roboflow:
+  workspace: hansora
+  project: my-first-project-ralip
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/hansora/my-first-project-ralip/dataset/1

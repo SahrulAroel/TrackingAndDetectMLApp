@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}Antrian Mobil - Sistem AI{% endblock %}
+
+{% block page_title %}DASHBOARD ANTRIAN MOBIL{% endblock %}
+
+{% block head_extra %}
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'primary': '#5D3EBC',
+                    'primary-dark': '#4A2F9B',
+                    'primary-light': '#F4F2FF',
+                    'secondary': '#3B82F6',
+                    'accent': '#10B981',
+                    'error': '#EF4444',
+                    'warning': '#F59E0B',
+                },
+            }
+        }
+    };
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-6 p-4 lg:p-6">
+    <section class="flex-1">
+        <div class="video-container shadow-2xl mb-4">
+            <img id="videoPlayer" src="{{ url_for('video_feed') }}" alt="Live Stream" 
+                 class="w-full h-full object-cover"
+                 onerror="this.onerror=null; this.style.display='none'; document.getElementById('loadingOverlay').style.display='flex';">
+            
+            <div class="absolute top-4 left-4 flex gap-2">
+                <div class="bg-black/70 text-white text-xs font-mono px-2 py-1 rounded backdrop-blur-sm">{{ now.strftime('%H:%M:%S') }}</div>
+            </div>
+            
+            <div class="absolute top-4 right-4">
+                <button class="bg-white/90 text-gray-900 px-4 py-1.5 rounded-full font-semibold shadow-lg text-sm backdrop-blur-sm">
+                    CCTV-01: Air Putih
+                </button>
+            </div>
+
+            <div id="loadingOverlay" class="absolute inset-0 bg-black/80 flex items-center justify-center flex-col z-10 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                <p class="text-white font-semibold">Menghubungkan ke Server...</p>
+            </div>
+        </div>
+
+        <div class="mdc-card p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Kontrol Sistem AI</h3>
+                        <p class="text-sm text-gray-500">Kelola proses deteksi kendaraan secara real-time</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-500">Status Sistem</span>
+                            <span id="statusText" class="font-bold text-error flex items-center gap-2">
+                                <span class="material-icons-round text-base">stop_circle</span>
+                                STOPPED
+                            </span>
+                        </div>
+                        
+                        <div class="h-8 w-px bg-gray-200"></div>
+                        
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-500">Kecepatan Proses</span>
+                            <span id="fpsText" class="font-bold text-accent font-mono">0 FPS</span>
+                        </div>
+                        
+                        <div class="h-8 w-px bg-gray-200"></div>
+                        
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-500">Model AI</span>
+                            <span class="font-bold text-primary">YOLOv8 + ByteTrack</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button id="btnStop" 
+                            class="mdc-button mdc-button--outlined disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-6 py-2.5 font-medium"
+                            disabled>
+                        <span class="material-icons-round mr-2">stop</span>
+                        Stop
+                    </button>
+                    
+                    <button id="btnStart" 
+                            class="mdc-button mdc-button--contained bg-primary hover:bg-primary-dark text-white rounded-lg px-6 py-2.5 font-medium shadow-lg transition-all">
+                        <span class="material-icons-round mr-2">play_arrow</span>
+                        Start AI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="mdc-card p-6 bg-gradient-to-br from-primary-light to-white">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="p-3 bg-primary/10 rounded-xl">
+                                <span class="material-icons-round text-primary text-2xl">directions_car</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Mobil Penumpang</h3>
+                                <p class="text-sm text-gray-500">Kendaraan ringan terdeteksi</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-600">Jumlah saat ini</span>
+                                    <span id="mobilTotal" class="font-bold text-gray-800">0</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%" id="mobilProgress"></div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Kapasitas: <span id="mobilCapacity">0/50</span> unit
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right">
+                        <div class="text-4xl font-bold text-primary" id="mobilTotalLarge">0</div>
+                        <span class="text-sm text-gray-500">unit</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdc-card p-6 bg-gradient-to-br from-blue-50 to-white">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="p-3 bg-secondary/10 rounded-xl">
+                                <span class="material-icons-round text-secondary text-2xl">local_shipping</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Truk & Bus</h3>
+                                <p class="text-sm text-gray-500">Kendaraan berat terdeteksi</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-600">Jumlah saat ini</span>
+                                    <span id="trukTotal" class="font-bold text-gray-800">0</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%" id="trukProgress"></div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Kapasitas: <span id="trukCapacity">0/20</span> unit
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right">
+                        <div class="text-4xl font-bold text-secondary" id="trukTotalLarge">0</div>
+                        <span class="text-sm text-gray-500">unit</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <aside class="lg:w-96 space-y-6">
+        <div class="mdc-card p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="material-icons-round text-primary">info</span>
+                Informasi Sistem
+            </h3>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-gray-600">Model AI</span>
+                    <span class="font-semibold">YOLOv8 + ByteTrack</span>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-gray-600">Framework</span>
+                    <span class="font-semibold text-accent">Flask + OpenCV</span>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-gray-600">Resolusi</span>
+                    <span class="font-semibold">1920 × 1080</span>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-gray-600">Latensi</span>
+                    <span class="font-semibold" id="latencyText">-- ms</span>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-gray-600">Uptime</span>
+                    <span class="font-semibold text-green-600" id="uptimeText">00:00:00</span>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t border-gray-100">
+                <button onclick="resetSystem()" 
+                        class="w-full mdc-button mdc-button--outlined border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
+                    <span class="material-icons-round mr-2">restart_alt</span>
+                    Reset Data
+                </button>
+            </div>
+        </div>
+
+        <div class="mdc-card p-6 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span class="material-icons-round text-accent">speed</span>
+                Performa Server
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>CPU Usage</span>
+                        <span class="font-mono" id="cpuUsage">--%</span>
+                    </div>
+                    <div class="progress-bar bg-gray-700">
+                        <div class="progress-fill bg-gradient-to-r from-accent to-cyan-400" style="width: 0%" id="cpuProgress"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>Memory Usage</span>
+                        <span class="font-mono" id="memoryUsage">--%</span>
+                    </div>
+                    <div class="progress-bar bg-gray-700">
+                        <div class="progress-fill bg-gradient-to-r from-primary to-secondary" style="width: 0%" id="memoryProgress"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>GPU Usage</span>
+                        <span class="font-mono" id="gpuUsage">--%</span>
+                    </div>
+                    <div class="progress-bar bg-gray-700">
+                        <div class="progress-fill bg-gradient-to-r from-purple-500 to-pink-500" style="width: 0%" id="gpuProgress"></div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-gray-700">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold" id="totalVehicles">0</div>
+                        <p class="text-sm text-gray-300">Total Kendaraan Terdeteksi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Page variables
+    let aiRunning = false;
+    let pollingInterval;
+    let startTime = null;
+    let vehicleCounts = { mobil: 0, truk: 0, motor: 0 };
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initEventListeners();
+        startPolling();
+        updateUptime();
+        setInterval(updateUptime, 1000);
+    });
+    
+    // Initialize event listeners
+    function initEventListeners() {
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        
+        if (btnStart) {
+            btnStart.addEventListener('click', startAI);
+        }
+        
+        if (btnStop) {
+            btnStop.addEventListener('click', stopAI);
+        }
+    }
+    
+    // Start AI processing
+    async function startAI() {
+        try {
+            const response = await fetch('/api/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                aiRunning = true;
+                startTime = new Date();
+                updateSystemStatus(true);
+                showNotification('Sistem AI berhasil dijalankan', 'success');
+                
+                const videoPlayer = document.getElementById('videoPlayer');
+                if (videoPlayer) {
+                    videoPlayer.src = videoPlayer.src.split('?')[0] + '?' + new Date().getTime();
+                }
+            }
+        } catch (error) {
+            console.error('Error starting AI:', error);
+            showNotification('Gagal menjalankan sistem AI', 'error');
+        }
+    }
+    
+    // Stop AI processing
+    async function stopAI() {
+        try {
+            const response = await fetch('/api/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                aiRunning = false;
+                updateSystemStatus(false);
+                showNotification('Sistem AI dihentikan', 'info');
+            }
+        } catch (error) {
+            console.error('Error stopping AI:', error);
+            showNotification('Gagal menghentikan sistem AI', 'error');
+        }
+    }
+    
+    // Start polling for status updates
+    function startPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
+        
+        pollingInterval = setInterval(fetchStatus, 2000);
+        fetchStatus();
+    }
+    
+    // Fetch system status
+    async function fetchStatus() {
+        try {
+            const response = await fetch('/api/status');
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const data = await response.json();
+            
+            vehicleCounts = data.counts || { mobil: 0, truk: 0, motor: 0 };
+            updateVehicleCounts();
+            updateFPS(data.fps || 0);
+            
+            if (data.running !== undefined) {
+                aiRunning = data.running;
+                updateSystemStatus(data.running);
+            }
+            
+            updateSystemPerformance();
+            
+        } catch (error) {
+            console.error('Error fetching status:', error);
+            updateSystemStatus(false);
+        }
+    }
+    
+    // Update vehicle counts display
+    function updateVehicleCounts() {
+        const mobilCount = vehicleCounts["mobil"] || vehicleCounts["Golongan IVA"] || vehicleCounts["Golongan IVB"] || 0;
+        const trukCount = vehicleCounts["truk"] || vehicleCounts["Golongan VB"] || 0;
+        // Mobil
+        document.getElementById('mobilTotal').textContent = mobilCount;
+        document.getElementById('mobilTotalLarge').textContent = mobilCount;
+        document.getElementById('mobilCapacity').textContent = `${mobilCount}/50`;
+        const mobilProgress = (mobilCount / 50) * 100;
+        document.getElementById('mobilProgress').style.width = `${Math.min(mobilProgress, 100)}%`;
+        
+        // Truk
+        document.getElementById('trukTotal').textContent = trukCount;
+        document.getElementById('trukTotalLarge').textContent = trukCount;
+        document.getElementById('trukCapacity').textContent = `${trukCount}/20`;
+        const trukProgress = (trukCount / 20) * 100;
+        document.getElementById('trukProgress').style.width = `${Math.min(trukProgress, 100)}%`;
+        
+        // Total
+        const total = mobilCount + trukCount;
+        document.getElementById('totalVehicles').textContent = total;
+    }
+    
+    // Update FPS display
+    function updateFPS(fps) {
+        document.getElementById('fpsText').textContent = `${fps.toFixed(1)} FPS`;
+        const latency = fps > 0 ? Math.round(1000 / fps) : 0;
+        document.getElementById('latencyText').textContent = `${latency} ms`;
+    }
+    
+    // Update system status display
+    function updateSystemStatus(isRunning) {
+        const statusText = document.getElementById('statusText');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        
+        if (isRunning) {
+            statusText.innerHTML = '<span class="material-icons-round text-base text-accent animate-pulse">play_circle</span> PROCESSING';
+            statusText.className = "font-bold text-accent flex items-center gap-2";
+            btnStart.disabled = true;
+            btnStop.disabled = false;
+        } else {
+            statusText.innerHTML = '<span class="material-icons-round text-base">stop_circle</span> STOPPED';
+            statusText.className = "font-bold text-error flex items-center gap-2";
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+        }
+    }
+    
+    // Update system performance (Simulated)
+    function updateSystemPerformance() {
+        const cpuUsage = Math.floor(Math.random() * 40) + 30;
+        const memoryUsage = Math.floor(Math.random() * 50) + 20;
+        const gpuUsage = Math.floor(Math.random() * 60) + 10;
+        
+        document.getElementById('cpuUsage').textContent = `${cpuUsage}%`;
+        document.getElementById('cpuProgress').style.width = `${cpuUsage}%`;
+        document.getElementById('memoryUsage').textContent = `${memoryUsage}%`;
+        document.getElementById('memoryProgress').style.width = `${memoryUsage}%`;
+        document.getElementById('gpuUsage').textContent = `${gpuUsage}%`;
+        document.getElementById('gpuProgress').style.width = `${gpuUsage}%`;
+    }
+    
+    // Update uptime
+    function updateUptime() {
+        if (!startTime) return;
+        const now = new Date();
+        const diff = Math.floor((now - startTime) / 1000);
+        const hours = Math.floor(diff / 3600);
+        const minutes = Math.floor((diff % 3600) / 60);
+        const seconds = diff % 60;
+        document.getElementById('uptimeText').textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Reset system data
+    function resetSystem() {
+        if (confirm("Reset data perhitungan di layar? Data akan dikembalikan ke nol.")) {
+            vehicleCounts = { mobil: 0, truk: 0, motor: 0 };
+            updateVehicleCounts();
+            showNotification('Data berhasil direset', 'success');
+        }
+    }
+</script>
+{% endblock %}

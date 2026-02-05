@@ -1,0 +1,19 @@
+project/
+│
+├── app.py @                   # File Flask utama
+├── templates/
+│   ├── base.html            # Template dasar
+│   ├── dashboard_home.html  # Dashboard utama
+│   ├── antrian_mobil.html   # Halaman antrian mobil
+│   ├── antrian_motor.html   # Halaman antrian motor
+│   ├── laporan.html         # Halaman laporan
+│   └── evaluasi.html        # Halaman evaluasi
+│
+├── static/
+│   ├── css/
+│   │   └── style.css        # CSS terpusat
+│   ├── js/
+│   │   └── main.js          # JavaScript utama
+│   └── img/                 # Gambar dan assets
+│
+└── requirements.txt

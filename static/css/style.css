@@ -1,0 +1,274 @@
+/* Custom Colors */
+:root {
+    --primary: #5D3EBC;
+    --primary-dark: #4A2F9B;
+    --primary-light: #F4F2FF;
+    --secondary: #3B82F6;
+    --accent: #10B981;
+    --error: #EF4444;
+    --warning: #F59E0B;
+    --surface: #FFFFFF;
+    --background: #F5F7FA;
+}
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--background);
+    color: #374151;
+}
+
+/* Material Design Components */
+.mdc-card {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mdc-card:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Navigation Drawer */
+.nav-drawer {
+    position: fixed;
+    top: 0;
+    left: -280px; /* Sembunyi di kiri saat awal */
+    width: 280px;
+    height: 100vh; /* Memastikan tinggi penuh layar */
+    background-color: #5b21b6; /* Contoh warna primary Anda */
+    z-index: 50;
+    transition: left 0.3s ease; /* Animasi geser */
+    overflow-y: auto; /* Agar bisa di-scroll jika menu banyak */
+}
+
+/* Class saat sidebar terbuka */
+.nav-drawer.open {
+    left: 0;
+}
+
+
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    border-radius: 12px;
+    margin: 4px 12px;
+    transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* App Bar */
+.app-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.menu-btn {
+    padding: 8px;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+}
+
+.menu-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+}
+
+.page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+}
+
+.timestamp {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-family: monospace;
+}
+
+/* Notification */
+.notification-btn {
+    position: relative;
+    padding: 8px;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+}
+
+.notification-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.notification-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent);
+    border-radius: 9999px;
+    animation: pulse 2s infinite;
+}
+
+/* Profile */
+.profile-btn {
+    padding: 8px;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+}
+
+.profile-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.profile-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Video Container */
+.video-container {
+    position: relative;
+    width: 100%;
+    background: linear-gradient(45deg, #121212, #1a1a1a);
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Footer */
+.footer {
+    margin-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+/* Drawer Overlay */
+.drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+}
+
+/* Notification Container */
+.notification-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 24rem;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-drawer {
+        width: 100%;
+    }
+    
+    .page-title {
+        font-size: 1rem;
+    }
+    
+    .video-container {
+        aspect-ratio: 4/3;
+    }
+}

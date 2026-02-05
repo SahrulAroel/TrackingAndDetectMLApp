@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard Pelabuhan - Sistem AI{% endblock %}</title>
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+    <!-- Navigation Drawer -->
+    <div id="nav-drawer" class="nav-drawer">
+        <div class="h-full flex flex-col">
+            <div class="p-6 border-b border-primary/20">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-material-2">
+                        <span class="text-primary font-bold text-lg">B</span>
+                    </div>
+                    <div>
+                        <h2 class="text-white font-bold text-lg">Pelabuhan Bengkalis</h2>
+                        <p class="text-primary-light text-sm">AI Monitoring System</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-4">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="material-icons-round mr-3">dashboard</span>
+                    Dashboard Utama
+                </a>
+                <a href="{{ url_for('antrian_mobil') }}" class="nav-item {% if request.endpoint == 'antrian_mobil' %}active{% endif %}">
+                    <span class="material-icons-round mr-3">directions_car</span>
+                    Antrian Mobil
+                </a>
+                <a href="{{ url_for('antrian_motor') }}" class="nav-item {% if request.endpoint == 'antrian_motor' %}active{% endif %}">
+                    <span class="material-icons-round mr-3">two_wheeler</span>
+                    Antrian Motor
+                </a>
+                <a href="{{ url_for('laporan') }}" class="nav-item {% if request.endpoint == 'laporan' %}active{% endif %}">
+                    <span class="material-icons-round mr-3">description</span>
+                    Laporan
+                </a>
+                <a href="{{ url_for('evaluasi') }}" class="nav-item {% if request.endpoint == 'evaluasi' %}active{% endif %}">
+                    <span class="material-icons-round mr-3">analytics</span>
+                    Evaluasi Model
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-primary/20">
+                <div class="flex items-center gap-3 p-3 bg-primary/20 rounded-lg">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <span class="material-icons-round text-primary">person</span>
+                    </div>
+                    <div>
+                        <p class="text-white text-sm font-medium">Admin Sistem</p>
+                        <p class="text-primary-light text-xs">online</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drawer Overlay -->
+    <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+
+    <!-- App Bar -->
+    <header class="app-bar">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button id="menu-btn" class="menu-btn">
+                        <span class="material-icons-round text-2xl text-primary">menu</span>
+                    </button>
+
+                    <div class="flex items-center gap-3">
+                        <div class="logo-icon">
+                            <span class="text-white font-bold text-lg">B</span>
+                        </div>
+                        <div class="hidden md:block">
+                            <h2 class="font-semibold text-gray-800">Kabupaten Bengkalis</h2>
+                            <p class="text-xs text-gray-500">Pelabuhan Air Putih - Sei Selari</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <h1 class="page-title">
+                        {% block page_title %}DASHBOARD SISTEM AI PELABUHAN{% endblock %}
+                    </h1>
+                    <div class="flex items-center justify-center gap-2 mt-1">
+                        <span id="timestamp" class="timestamp">--:--:--</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button class="notification-btn">
+                        <span class="material-icons-round text-2xl text-gray-600">notifications</span>
+                        <span class="notification-dot"></span>
+                    </button>
+                    <button class="profile-btn">
+                        <div class="profile-icon">
+                            <span class="material-icons-round text-white text-lg">person</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-4 md:mb-0">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-xs">B</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700">Pelabuhan Air Putih - Sei Selari</span>
+                </div>
+                <p class="text-xs text-gray-500">Sistem Deteksi Kendaraan Berbasis AI</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                <p>© 2024 Dinas Perhubungan Kabupaten Bengkalis</p>
+                <p class="text-xs mt-1">Versi 2.1 | Terakhir diperbarui: <span id="currentDate"></span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

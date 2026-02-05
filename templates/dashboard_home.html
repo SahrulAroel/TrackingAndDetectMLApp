@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Utama - Sistem AI{% endblock %}
+
+{% block page_title %}DASHBOARD UTAMA{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">Selamat Datang di Dashboard AI Pelabuhan</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto">
+            Sistem monitoring dan deteksi kendaraan berbasis kecerdasan buatan untuk Pelabuhan Air Putih - Sei Selari
+        </p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Stat Cards -->
+        <div class="mdc-card p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="p-3 bg-primary/10 rounded-xl">
+                    <span class="material-icons-round text-primary text-2xl">directions_car</span>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800">Antrian Mobil</h3>
+                    <p class="text-sm text-gray-500">Monitoring real-time</p>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm">Pantau antrian mobil dengan sistem deteksi AI</p>
+            <a href="{{ url_for('antrian_mobil') }}" class="inline-block mt-4 text-primary font-medium hover:underline">
+                Buka dashboard →
+            </a>
+        </div>
+        
+        <div class="mdc-card p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="p-3 bg-accent/10 rounded-xl">
+                    <span class="material-icons-round text-accent text-2xl">analytics</span>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800">Evaluasi Model</h3>
+                    <p class="text-sm text-gray-500">Analisis performa AI</p>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm">Evaluasi performa model deteksi dengan berbagai metrik</p>
+            <a href="{{ url_for('evaluasi') }}" class="inline-block mt-4 text-accent font-medium hover:underline">
+                Lihat evaluasi →
+            </a>
+        </div>
+        
+        <div class="mdc-card p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="p-3 bg-secondary/10 rounded-xl">
+                    <span class="material-icons-round text-secondary text-2xl">description</span>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800">Laporan Sistem</h3>
+                    <p class="text-sm text-gray-500">Analisis data historis</p>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm">Generate laporan harian, mingguan, dan bulanan</p>
+            <a href="{{ url_for('laporan') }}" class="inline-block mt-4 text-secondary font-medium hover:underline">
+                Buat laporan →
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Page-specific JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Dashboard home loaded');
+    });
+</script>
+{% endblock %}

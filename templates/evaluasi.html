@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluasi Model - Sistem AI{% endblock %}
+
+{% block page_title %}DASHBOARD EVALUASI MODEL AI{% endblock %}
+
+{% block head_extra %}
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'primary': '#5D3EBC',
+                    'primary-dark': '#4A2F9B',
+                    'primary-light': '#F4F2FF',
+                    'secondary': '#3B82F6',
+                    'accent': '#10B981',
+                    'error': '#EF4444',
+                    'warning': '#F59E0B',
+                },
+            }
+        }
+    };
+</script>
+<style>
+    .confusion-matrix {
+        border-collapse: separate;
+        border-spacing: 2px;
+    }
+    .confusion-cell {
+        min-width: 80px;
+        text-align: center;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .confusion-cell:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex flex-col lg:flex-row gap-6">
+        <div class="flex-1 space-y-6">
+            <div class="mdc-card p-6 bg-gradient-to-r from-primary-light to-blue-50">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 bg-primary/10 rounded-xl">
+                        <span class="material-icons-round text-primary text-2xl">analytics</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Evaluasi Model Deteksi Kendaraan</h3>
+                        <p class="text-gray-600">
+                            Dashboard ini menampilkan hasil evaluasi <strong>REAL</strong> dari model deteksi kendaraan menggunakan dataset validasi (D:\BLACKPINK). 
+                            Perbandingan performa antara YOLOv8, SSD, dan Ensemble (WBF).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="mdc-card p-6 border-l-4 border-l-purple-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">YOLOv8</h3>
+                            <p class="text-sm text-gray-500">Ultralytics YOLOv8n</p>
+                        </div>
+                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">
+                            Base Model
+                        </span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Accuracy (mAP)</span>
+                            <span id="yoloAccuracy" class="font-bold">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="yoloAccuracyBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div>
+                            <p class="text-gray-500">Precision</p>
+                            <p id="yoloPrecision" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Recall</p>
+                            <p id="yoloRecall" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">F1-Score</p>
+                            <p id="yoloF1" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Inference (FPS)</p>
+                            <p id="yoloSpeed" class="font-bold text-lg">0 FPS</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mdc-card p-6 border-l-4 border-l-blue-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">SSD</h3>
+                            <p class="text-sm text-gray-500">MobileNetV2 (ONNX)</p>
+                        </div>
+                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                            Secondary
+                        </span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Accuracy (mAP)</span>
+                            <span id="ssdAccuracy" class="font-bold">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="ssdAccuracyBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div>
+                            <p class="text-gray-500">Precision</p>
+                            <p id="ssdPrecision" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Recall</p>
+                            <p id="ssdRecall" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">F1-Score</p>
+                            <p id="ssdF1" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Inference (FPS)</p>
+                            <p id="ssdSpeed" class="font-bold text-lg">0 FPS</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mdc-card p-6 border-l-4 border-l-green-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Ensemble (WBF)</h3>
+                            <p class="text-sm text-gray-500">YOLOv8 + SSD + WBF</p>
+                        </div>
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                            Best Overall
+                        </span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Accuracy (mAP)</span>
+                            <span id="ensembleAccuracy" class="font-bold">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="ensembleAccuracyBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div>
+                            <p class="text-gray-500">Precision</p>
+                            <p id="ensemblePrecision" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Recall</p>
+                            <p id="ensembleRecall" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">F1-Score</p>
+                            <p id="ensembleF1" class="font-bold text-lg">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Inference (FPS)</p>
+                            <p id="ensembleSpeed" class="font-bold text-lg">0 FPS</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="mdc-card p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Perbandingan Metrik</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="metricsComparisonChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="mdc-card p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Akurasi vs Kecepatan (FPS)</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="speedAccuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdc-card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800">Confusion Matrix</h3>
+                    <div class="flex gap-2">
+                        <button onclick="showConfusionMatrix('yolov8')" class="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors">
+                            YOLOv8
+                        </button>
+                        <button onclick="showConfusionMatrix('ssd')" class="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">
+                            SSD
+                        </button>
+                        <button onclick="showConfusionMatrix('ensemble')" class="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors">
+                            WBF
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="confusionMatrixContainer" class="overflow-x-auto">
+                    <div class="text-center py-12 text-gray-500">
+                        <span class="material-icons-round text-4xl mb-3 text-gray-300">grid_view</span>
+                        <p>Jalankan Evaluasi terlebih dahulu untuk melihat matrix</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex gap-4 text-xs text-gray-500 justify-center">
+                   <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-200"></div> Benar</div>
+                   <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-100"></div> Salah Deteksi</div>
+                </div>
+            </div>
+
+            <div class="mdc-card p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6">Konfigurasi Testing Real</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah Sample Gambar</label>
+                        <div class="relative">
+                            <input type="number" id="sampleCount" value="20" min="5" max="100" 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+                            <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+                                images
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Disarankan Max 50 agar tidak timeout.</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confidence Threshold</label>
+                        <input type="range" id="confidenceThreshold" min="0.1" max="0.9" step="0.1" value="0.5" 
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>0.1</span>
+                            <span id="thresholdValue">0.5</span>
+                            <span>0.9</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <button id="btnRunTest" class="w-full mdc-button mdc-button--contained bg-primary hover:bg-primary-dark rounded-lg px-6 py-3 text-white font-medium shadow-lg hover:shadow-xl transition-all">
+                        <span class="material-icons-round mr-2">play_arrow</span>
+                        Jalankan Evaluasi (Real-Time)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mdc-card p-6">
+                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Detail Hasil Evaluasi</h3>
+                 <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-700">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3">Model</th>
+                                <th class="px-6 py-3">Accuracy</th>
+                                <th class="px-6 py-3">Precision</th>
+                                <th class="px-6 py-3">Recall</th>
+                                <th class="px-6 py-3">FPS</th>
+                                <th class="px-6 py-3">TP / FP / FN</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                             <tr><td colspan="6" class="text-center py-4">Belum ada data</td></tr>
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- VARIABLES ---
+    let evaluationData = {
+        yolov8: { accuracy: 0, precision: 0, recall: 0, f1_score: 0, fps: 0, confusionMatrix: null },
+        ssd: { accuracy: 0, precision: 0, recall: 0, f1_score: 0, fps: 0, confusionMatrix: null },
+        ensemble: { accuracy: 0, precision: 0, recall: 0, f1_score: 0, fps: 0, confusionMatrix: null }
+    };
+    let charts = {};
+    let currentModel = null;
+    
+    // SESUAIKAN DENGAN BACKEND (ID 0,1,2,3)
+    const vehicleClasses = ['Gol II (Mtr)', 'Gol IVA (Mbl)', 'Gol IVB (Pck)', 'Gol VB (Trk)', 'Background'];
+    
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        
+        // Listeners
+        document.getElementById('confidenceThreshold').addEventListener('input', function(e) {
+            document.getElementById('thresholdValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('btnRunTest').addEventListener('click', runEvaluationTest);
+    });
+    
+    // --- MAIN FUNCTION: CALL BACKEND API ---
+    async function runEvaluationTest() {
+        const sampleCount = document.getElementById('sampleCount').value;
+        const confidence = document.getElementById('confidenceThreshold').value;
+        
+        const btn = document.getElementById('btnRunTest');
+        const originalText = btn.innerHTML;
+        
+        // UI Loading State
+        btn.innerHTML = '<span class="material-icons-round animate-spin mr-2">sync</span> Sedang Mengevaluasi (Mohon Tunggu)...';
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+        
+        try {
+            // CALL FLASK API
+            const response = await fetch('/api/run_evaluation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    samples: sampleCount,
+                    confidence: confidence
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+            
+            // UPDATE DATA GLOBAL
+            evaluationData.yolov8 = data.yolov8;
+            evaluationData.ssd = data.ssd;
+            evaluationData.ensemble = data.ensemble;
+            
+            // REFRESH UI
+            updateModelCards();
+            updateCharts();
+            updateResultsTable(data);
+            
+            // Show Default Confusion Matrix (Ensemble)
+            showConfusionMatrix('ensemble');
+            
+            alert(`Evaluasi Selesai pada ${data.sample_count} sampel gambar!`);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Gagal melakukan evaluasi: ' + error.message);
+        } finally {
+            // Restore Button
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+    }
+    
+    // --- UPDATE UI FUNCTIONS ---
+    
+    function updateModelCards() {
+        ['yolo', 'ssd', 'ensemble'].forEach(key => {
+            const dataKey = key === 'yolo' ? 'yolov8' : key; // Mapping key name
+            const data = evaluationData[dataKey];
+            
+            // Prefix ID elemen HTML (yoloAccuracy, ssdAccuracy, etc)
+            const prefix = key; 
+            
+            document.getElementById(`${prefix}Accuracy`).textContent = data.accuracy.toFixed(1) + '%';
+            document.getElementById(`${prefix}AccuracyBar`).style.width = data.accuracy + '%';
+            
+            document.getElementById(`${prefix}Precision`).textContent = data.precision.toFixed(1) + '%';
+            document.getElementById(`${prefix}Recall`).textContent = data.recall.toFixed(1) + '%';
+            document.getElementById(`${prefix}F1`).textContent = data.f1_score.toFixed(1) + '%';
+            document.getElementById(`${prefix}Speed`).textContent = data.fps.toFixed(1) + ' FPS';
+        });
+    }
+    
+    function updateResultsTable(data) {
+        const tbody = document.getElementById('resultsTableBody');
+        tbody.innerHTML = '';
+        
+        const models = [
+            { name: 'YOLOv8', key: 'yolov8', color: 'purple' },
+            { name: 'SSD', key: 'ssd', color: 'blue' },
+            { name: 'Ensemble', key: 'ensemble', color: 'green' }
+        ];
+        
+        models.forEach(m => {
+            const d = data[m.key];
+            const row = `
+                <tr class="hover:bg-gray-50 border-b">
+                    <td class="px-6 py-4 font-medium text-${m.color}-700">${m.name}</td>
+                    <td class="px-6 py-4 font-bold">${d.accuracy}%</td>
+                    <td class="px-6 py-4">${d.precision}%</td>
+                    <td class="px-6 py-4">${d.recall}%</td>
+                    <td class="px-6 py-4">${d.fps}</td>
+                    <td class="px-6 py-4 text-xs">
+                        <span class="text-green-600">TP:${d.total_tp}</span> / 
+                        <span class="text-red-600">FP:${d.total_fp}</span> / 
+                        <span class="text-gray-500">FN:${d.total_fn}</span>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function showConfusionMatrix(modelKey) {
+        currentModel = modelKey;
+        const container = document.getElementById('confusionMatrixContainer');
+        const matrix = evaluationData[modelKey].confusionMatrix;
+        
+        if (!matrix) {
+            container.innerHTML = '<div class="text-center py-4 text-red-500">Data matriks belum tersedia</div>';
+            return;
+        }
+
+        // Generate HTML Table for Matrix
+        let html = '<table class="confusion-matrix mx-auto">';
+        
+        // Header Row (Predicted Classes)
+        html += '<thead><tr><th rowspan="2" class="p-2 text-right align-middle">Actual</th><th colspan="4" class="p-2 text-center bg-gray-100 rounded-t">Predicted</th></tr><tr>';
+        vehicleClasses.forEach(cls => {
+            html += `<th class="confusion-cell p-2 bg-gray-100 text-xs">${cls}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        // Matrix Body
+        matrix.forEach((row, i) => {
+            html += `<tr><td class="p-2 font-bold text-xs bg-gray-50 text-right">${vehicleClasses[i]}</td>`;
+            row.forEach((val, j) => {
+                // Coloring logic
+                let colorClass = 'bg-white';
+                if (i === j && val > 0) colorClass = 'bg-green-200 text-green-900 font-bold'; // TP
+                else if (i !== j && val > 0) colorClass = 'bg-red-100 text-red-900'; // Miss
+                else if (val === 0) colorClass = 'bg-gray-50 text-gray-300'; // Zero
+                
+                html += `<td class="confusion-cell p-3 border border-gray-100 ${colorClass}">${val}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        
+        container.innerHTML = html;
+    }
+    
+    // --- CHARTS ---
+    function initCharts() {
+        // 1. Metrics Comparison Chart
+        const metricsCtx = document.getElementById('metricsComparisonChart').getContext('2d');
+        charts.metrics = new Chart(metricsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Accuracy (mAP)', 'Precision', 'Recall', 'F1-Score'],
+                datasets: [
+                    { label: 'YOLOv8', data: [0,0,0,0], backgroundColor: '#5D3EBC' },
+                    { label: 'SSD', data: [0,0,0,0], backgroundColor: '#3B82F6' },
+                    { label: 'Ensemble', data: [0,0,0,0], backgroundColor: '#10B981' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
+        
+        // 2. Speed vs Accuracy
+        const speedCtx = document.getElementById('speedAccuracyChart').getContext('2d');
+        charts.speed = new Chart(speedCtx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    { label: 'YOLOv8', data: [{x:0, y:0}], backgroundColor: '#5D3EBC', pointRadius: 8 },
+                    { label: 'SSD', data: [{x:0, y:0}], backgroundColor: '#3B82F6', pointRadius: 8 },
+                    { label: 'Ensemble', data: [{x:0, y:0}], backgroundColor: '#10B981', pointRadius: 8 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'FPS (Higher is Better)' }, min: 0 },
+                    y: { title: { display: true, text: 'Accuracy (%)' }, min: 0, max: 100 }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return `${ctx.dataset.label}: ${ctx.raw.y}% Acc @ ${ctx.raw.x} FPS`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateCharts() {
+        // Update Metrics Bar Chart
+        const d = evaluationData;
+        charts.metrics.data.datasets[0].data = [d.yolov8.accuracy, d.yolov8.precision, d.yolov8.recall, d.yolov8.f1_score];
+        charts.metrics.data.datasets[1].data = [d.ssd.accuracy, d.ssd.precision, d.ssd.recall, d.ssd.f1_score];
+        charts.metrics.data.datasets[2].data = [d.ensemble.accuracy, d.ensemble.precision, d.ensemble.recall, d.ensemble.f1_score];
+        charts.metrics.update();
+        
+        // Update Scatter Chart
+        charts.speed.data.datasets[0].data = [{x: d.yolov8.fps, y: d.yolov8.accuracy}];
+        charts.speed.data.datasets[1].data = [{x: d.ssd.fps, y: d.ssd.accuracy}];
+        charts.speed.data.datasets[2].data = [{x: d.ensemble.fps, y: d.ensemble.accuracy}];
+        charts.speed.update();
+    }
+</script>
+{% endblock %}
