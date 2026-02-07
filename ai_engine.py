@@ -12,7 +12,7 @@ from ensemble_boxes import weighted_boxes_fusion
 # ==========================================
 SSD_CHECK_INTERVAL = 1      # Cek SSD setiap 1 frame
 WBF_IOU_THRESHOLD = 0.5
-YOLO_WEIGHT = 4             # Bobot YOLO lebih besar
+YOLO_WEIGHT = 2             # Bobot YOLO lebih besar
 SSD_WEIGHT = 1
 YOLO_CONF = 0.25            # Confidence threshold standar (digunakan di Deteksi & Evaluasi)
 SSD_CONF = 0.30
@@ -190,14 +190,21 @@ class VehicleDetector :
 
     # [NEW] FUNGSI RESET TRACKER
     # Panggil fungsi ini jika berganti dari Mode Evaluasi ke Mode Live Detection
+    # Di dalam class VehicleDetector file ai_engine.py
+
     def reset_tracker(self):
-        print("🔄 Resetting Tracker State...")
-        self.prev_pos = {}
-        # Memuat ulang model adalah cara teraman mereset tracker state di Ultralytics
+        print("🔄 MEMORY WIPE: Resetting YOLO Tracker State...")
+        self.prev_pos = {} # Hapus history garis
+        self.counts = {    # Optional: Reset counter jika diperlukan per sesi
+            "Golongan II": 0, "Golongan IVA": 0, "Golongan IVB": 0, "Golongan VB": 0
+        }
+    
+        # KUNCI UTAMA: Reload Model untuk menghapus state Kalman Filter
         try:
+            # Load ulang model ke memori (ini menghapus cache tracker lama)
             self.yolo = YOLO(self.yolo_path, task='detect')
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ Gagal reset model: {e}")
 
     # --- FUNGSI 1: LIVE VIEW (OPTIMIZED) ---
     def detect_objects(self, frame, allowed_classes=None):
@@ -206,7 +213,8 @@ class VehicleDetector :
         
         # A. YOLO TRACKING (Jalan Sekali Saja)
         # Menggunakan persist=True untuk tracking kontinyu
-        results = self.yolo.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False, conf=YOLO_CONF)
+        # Memastikan YOLO tidak melakukan resize otomatis yang aneh-aneh
+        results = self.yolo.track(frame, persist=True, tracker="bytetrack.yaml", imgsz=640, conf=YOLO_CONF)
         
         # Ambil data untuk WBF (Ensemble)
         y_boxes, y_scores, y_labels = [], [], []

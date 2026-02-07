@@ -23,8 +23,10 @@ CORS(app)
 init_db()
 
 # Path Video (Sesuaikan nama file kamu)
-VIDEO_SOURCE_MOBIL = 'video/assa.mp4'
+VIDEO_SOURCE_MOBIL = 'video/TEST1.mp4'
 VIDEO_SOURCE_MOTOR = 'video/TestMotor.mp4' 
+
+DB_PATH = 'laporan_kendaraan.db'
 
 # Path dataset - sesuaikan dengan struktur folder Anda
 BASE_DATASET_PATH = 'dataset'
@@ -116,27 +118,32 @@ def evaluasi():
 
 @app.route('/video_feed')
 def video_feed():
-    """Video Stream untuk Halaman Mobil"""
     def generate():
         global mobil_counts, mobil_fps
-        # Buka video mobil, fallback ke webcam (0) jika file tidak ada
+        
+        # --- [FIX 1] RESET SEBELUM MULAI STREAM ---
+        # Ini mencegah "ingatan" dari halaman sebelumnya merusak akurasi awal
+        detector_mobil.reset_tracker()
+        
         src = VIDEO_SOURCE_MOBIL if os.path.exists(VIDEO_SOURCE_MOBIL) else 0
         cap = cv2.VideoCapture(src)
-        prev_time = time.time()
         
+        prev_time = time.time()
+
         while True:
             success, frame = cap.read()
-            # Auto Loop Video
+            
+            # --- [FIX 2] RESET SAAT VIDEO LOOPING ---
             if not success:
+                detector_mobil.reset_tracker() # Reset lagi saat video ulang dari awal
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, frame = cap.read()
             
             if success:
-                # Resize standar
                 frame = cv2.resize(frame, (1280, 720))
-
+                
                 if mobil_running:
-                    # Deteksi semua kendaraan
+                    # Deteksi berjalan dengan memori yang segar
                     frame, counts, _ = detector_mobil.detect_objects(frame)
                     mobil_counts = counts
                     
@@ -163,7 +170,10 @@ def video_feed_motor():
     """Video Stream Khusus Halaman Motor"""
     def generate():
         global motor_counts, motor_fps
-        # Buka video motor, fallback ke video mobil jika file motor belum ada
+        
+        # 1. RESET TRACKER (MOTOR)
+        detector_motor.reset_tracker()
+        
         src = VIDEO_SOURCE_MOTOR if os.path.exists(VIDEO_SOURCE_MOTOR) else VIDEO_SOURCE_MOBIL
         cap = cv2.VideoCapture(src)
         prev_time = time.time()
@@ -171,6 +181,9 @@ def video_feed_motor():
         while True:
             success, frame = cap.read()
             if not success:
+                # 2. RESET TRACKER SAAT LOOP
+                detector_motor.reset_tracker()
+                
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, frame = cap.read()
             
@@ -283,76 +296,65 @@ def get_laporan_data():
         print(f"DB Error: {e}")
         return jsonify([])
     
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row # Agar bisa akses kolom pakai nama (dict-like)
+    return conn
+
 @app.route('/api/vehicle-reports')
 def get_vehicle_reports():
     try:
-        # Connect to database
-        conn = sqlite3.connect('D:/BLACKPINK/laporan_kendaraan.db')
+        # 1. Ambil Parameter Filter dari URL
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        vehicle_type = request.args.get('vehicle_type')
+
+        conn = get_db_connection()
         cursor = conn.cursor()
+
+        # 2. Bangun Query SQL Dinamis
+        query = "SELECT * FROM detail_kendaraan WHERE 1=1"
+        params = []
+
+        # Filter Tanggal (Support format YYYY-MM-DD HH:MM:SS di database)
+        if start_date and end_date:
+            query += " AND waktu_melintas BETWEEN ? AND ?"
+            # Tambahkan jam awal dan akhir hari agar akurat
+            params.extend([f"{start_date} 00:00:00", f"{end_date} 23:59:59"])
         
-        # Get all records
-        cursor.execute("SELECT * FROM detail_kendaraan ORDER BY waktu_melintas DESC")
-        records = cursor.fetchall()
+        # Filter Jenis Kendaraan
+        if vehicle_type and vehicle_type != 'all':
+            query += " AND jenis_kendaraan = ?"
+            params.append(vehicle_type)
+
+        query += " ORDER BY waktu_melintas DESC"
+
+        # 3. Eksekusi Query
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
         
-        # Get column names
-        columns = [description[0] for description in cursor.description]
-        
-        # Convert to list of dictionaries
+        # 4. Konversi Data ke Dictionary
         record_list = []
-        for record in records:
-            record_list.append(dict(zip(columns, record)))
-        
-        # Calculate summary
-        total_vehicles = len(records)
-        
-        # Count by source
-        cursor.execute("SELECT video_source, COUNT(*) FROM detail_kendaraan GROUP BY video_source")
-        source_counts = dict(cursor.fetchall())
-        
-        # Count by vehicle type
-        cursor.execute("SELECT jenis_kendaraan, COUNT(*) FROM detail_kendaraan GROUP BY jenis_kendaraan")
-        vehicle_types = dict(cursor.fetchall())
-        
-        # Get unique track IDs
-        cursor.execute("SELECT COUNT(DISTINCT track_id) FROM detail_kendaraan")
-        unique_tracks = cursor.fetchone()[0]
-        
-        # Get today's count
-        today = datetime.now().strftime('%Y-%m-%d')
-        cursor.execute("SELECT COUNT(*) FROM detail_kendaraan WHERE DATE(waktu_melintas) = ?", (today,))
-        daily_count = cursor.fetchone()[0]
-        
-        # Get chart data (example: last 7 days)
-        chart_data = {
-            'daily_trend': get_daily_trend_data(cursor),
-            'vehicle_distribution': get_vehicle_distribution_data(cursor),
-            'hourly_distribution': get_hourly_distribution_data(cursor, today)
-        }
-        
-        # Get unique dates for dropdown
-        cursor.execute("SELECT DISTINCT DATE(waktu_melintas) as date FROM detail_kendaraan ORDER BY date DESC")
-        dates = [row[0] for row in cursor.fetchall()]
+        for row in rows:
+            record_list.append(dict(row))
+            
+        # 5. Siapkan Data Ringkasan (Opsional, tapi membantu frontend)
+        # Kita kirim data mentah (records), biar JS yang hitung chart-nya agar sinkron.
         
         conn.close()
         
         return jsonify({
+            'status': 'success',
             'records': record_list,
-            'summary': {
-                'total_vehicles': total_vehicles,
-                'daily_count': daily_count,
-                'cctv_count': source_counts.get('CCTV_Main', 0) + source_counts.get('CCTV Main', 0),
-                'system_count': source_counts.get('System', 0),
-                'unique_tracks': unique_tracks,
-                'active_tracks': total_vehicles  # Simplified
-            },
-            'vehicle_types': vehicle_types,
-            'chart_data': chart_data,
-            'dates': dates
+            'count': len(record_list)
         })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
+    except sqlite3.OperationalError:
+        return jsonify({'status': 'error', 'message': 'Tabel database tidak ditemukan. Pastikan tabel "detail_kendaraan" sudah dibuat.'}), 500
+    except Exception as e:
+        print(f"Server Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
 def get_daily_trend_data(cursor, days=7):
     """Get data for daily trend chart"""
     end_date = datetime.now()

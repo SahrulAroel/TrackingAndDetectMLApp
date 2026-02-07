@@ -3,6 +3,7 @@ import cv2
 import glob
 import numpy as np
 import time
+import random  # <--- [BARU] Tambahkan library random
 
 class ModelEvaluator:
     def __init__(self, detector_instance, images_path, labels_path):
@@ -63,7 +64,7 @@ class ModelEvaluator:
             cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(debug_img, f"GT: {cls_name}", (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-        # 2. Gambar Prediksi (MERAH untuk SSD, UNGU untuk YOLO, KUNING untuk Ensemble)
+        # 2. Gambar Prediksi (Warna Warni sesuai Model)
         color = (0, 0, 255) # Default Merah
         if model_type == 'yolov8': color = (255, 0, 255) # Ungu
         elif model_type == 'ensemble': color = (0, 255, 255) # Kuning
@@ -84,11 +85,22 @@ class ModelEvaluator:
         print(f"📸 Debug image saved: {save_path}")
 
     def run(self, model_type='ensemble', samples=20, conf_thresh=0.5):
+        # Ambil semua file gambar dulu
         image_files = glob.glob(os.path.join(self.images_path, "*.jpg"))
         if not image_files:
             image_files = glob.glob(os.path.join(self.images_path, "*.png"))
             
-        image_files = image_files[:samples]
+        # --- [MODIFIKASI] LOGIKA RANDOM SAMPLING ---
+        total_files = len(image_files)
+        
+        if total_files > samples:
+            # Ambil sampel acak sebanyak 'samples'
+            image_files = random.sample(image_files, samples)
+            print(f"🎲 Randomly selected {samples} images from {total_files} total files.")
+        else:
+            # Jika jumlah file kurang dari samples, ambil semua
+            print(f"⚠️ Warning: Requested {samples} samples, but only found {total_files}. Using all images.")
+        # -------------------------------------------
         
         tp, fp, fn = 0, 0, 0
         total_time = 0
@@ -120,7 +132,7 @@ class ModelEvaluator:
             preds = [p for p in preds if p['score'] >= conf_thresh]
             
             # --- DEBUGGING VISUAL ---
-            # Simpan gambar untuk 3 sample pertama agar kita bisa cek hasilnya
+            # Simpan gambar untuk 3 sample PERTAMA (dari hasil acak tadi)
             if saved_debug_count < MAX_DEBUG_IMAGES:
                 self.save_debug_image(frame, gt_boxes, preds, img_name, model_type)
                 saved_debug_count += 1

@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Laporan Sistem - Sistem AI{% endblock %}
+{% block title %}Laporan Sistem - Thesis Project{% endblock %}
 
-{% block page_title %}LAPORAN SISTEM{% endblock %}
+{% block page_title %}LAPORAN ANALISIS KENDARAAN{% endblock %}
 
 {% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <script>
     tailwind.config = {
         theme: {
@@ -12,11 +19,8 @@
                 colors: {
                     'primary': '#5D3EBC',
                     'primary-dark': '#4A2F9B',
-                    'primary-light': '#F4F2FF',
                     'secondary': '#3B82F6',
                     'accent': '#10B981',
-                    'error': '#EF4444',
-                    'warning': '#F59E0B',
                 },
             }
         }
@@ -26,262 +30,126 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-6">
-    <!-- Header Section -->
+    
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Laporan Sistem</h2>
-            <p class="text-gray-600">Analisis dan laporan data kendaraan terdeteksi</p>
+            <h2 class="text-2xl font-bold text-gray-800">Laporan Deteksi</h2>
+            <p class="text-gray-600">Rekapitulasi data deteksi objek (YOLOv8 + SSD)</p>
         </div>
         
         <div class="flex flex-wrap gap-3">
-            <button id="btnExportPDF" class="mdc-button mdc-button--contained bg-gradient-to-r from-red-500 to-red-600 rounded-lg px-6 py-2.5 text-white font-medium">
-                <span class="material-icons-round mr-2">picture_as_pdf</span>
-                Export PDF
+            <button onclick="exportToPDF()" class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium shadow transition-all">
+                <span class="material-icons-round">picture_as_pdf</span> PDF
             </button>
-            <button id="btnExportExcel" class="mdc-button mdc-button--contained bg-gradient-to-r from-green-500 to-green-600 rounded-lg px-6 py-2.5 text-white font-medium">
-                <span class="material-icons-round mr-2">table_chart</span>
-                Export Excel
+            <button onclick="exportToExcel()" class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow transition-all">
+                <span class="material-icons-round">table_chart</span> Excel
             </button>
-            <button id="btnGenerateReport" class="mdc-button mdc-button--contained bg-primary hover:bg-primary-dark rounded-lg px-6 py-2.5 text-white font-medium">
-                <span class="material-icons-round mr-2">refresh</span>
-                Refresh Data
+            <button onclick="loadDataFromDB()" class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg font-medium shadow transition-all">
+                <span class="material-icons-round">refresh</span> Refresh
             </button>
         </div>
     </div>
 
-    <!-- Filter Section -->
-    <div class="mdc-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Filter Laporan</h3>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span class="material-icons-round text-primary">filter_alt</span> Filter Data
+        </h3>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Periode</label>
-                <select id="reportPeriod" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+                <select id="reportPeriod" onchange="handlePeriodChange()" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary bg-white">
                     <option value="today">Hari Ini</option>
-                    <option value="yesterday">Kemarin</option>
                     <option value="week" selected>7 Hari Terakhir</option>
                     <option value="month">Bulan Ini</option>
-                    <option value="quarter">Kuartal Ini</option>
-                    <option value="year">Tahun Ini</option>
                     <option value="custom">Kustom</option>
                 </select>
             </div>
-            
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-                <input type="date" id="startDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white" 
-                       value="{{ (now - timedelta(days=7)).strftime('%Y-%m-%d') if now else '' }}">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Dari Tanggal</label>
+                <input type="date" id="startDate" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
             </div>
-            
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Akhir</label>
-                <input type="date" id="endDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white" 
-                       value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sampai Tanggal</label>
+                <input type="date" id="endDate" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
             </div>
-            
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Kendaraan</label>
-                <select id="vehicleType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
-                    <option value="all">Semua Kendaraan</option>
+                <select id="vehicleType" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary bg-white">
+                    <option value="all">Semua</option>
                     <option value="mobil">Mobil</option>
                     <option value="motor">Motor</option>
                     <option value="Golongan II">Golongan II</option>
                     <option value="Golongan IVA">Golongan IVA</option>
-                    <option value="Golongan TT">Golongan TT</option>
                 </select>
             </div>
         </div>
-        
         <div class="mt-4 flex justify-end">
-            <button id="btnApplyFilter" class="mdc-button mdc-button--contained bg-primary hover:bg-primary-dark rounded-lg px-6 py-2.5 text-white font-medium">
-                <span class="material-icons-round mr-2">filter_alt</span>
-                Terapkan Filter
-            </button>
+            <button onclick="loadDataFromDB()" class="bg-gray-800 hover:bg-black text-white px-6 py-2 rounded-lg font-medium">Terapkan</button>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="mdc-card p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Total Kendaraan</p>
-                    <p class="text-3xl font-bold text-gray-800" id="totalVehiclesReport">0</p>
-                </div>
-                <div class="p-3 bg-blue-100 rounded-xl">
-                    <span class="material-icons-round text-blue-600 text-2xl">directions_car</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="text-gray-600">Data real-time dari database</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 0%" id="totalProgressBar"></div>
-                </div>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+            <p class="text-gray-500 text-sm">Total Kendaraan (Terfilter)</p>
+            <p class="text-3xl font-bold text-gray-800 mt-1" id="totalVehicles">0</p>
         </div>
-        
-        <div class="mdc-card p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Data Hari Ini</p>
-                    <p class="text-3xl font-bold text-gray-800" id="dailyCount">0</p>
-                </div>
-                <div class="p-3 bg-green-100 rounded-xl">
-                    <span class="material-icons-round text-green-600 text-2xl">today</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="text-gray-600">Update terakhir</span>
-                    <span class="font-semibold text-gray-700" id="lastUpdateTime">-</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill bg-gradient-to-r from-green-500 to-blue-500" style="width: 0%" id="dailyProgressBar"></div>
-                </div>
-            </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+            <p class="text-gray-500 text-sm">Jenis Terbanyak</p>
+            <p class="text-3xl font-bold text-gray-800 mt-1" id="topVehicle">-</p>
         </div>
-        
-        <div class="mdc-card p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Sumber CCTV</p>
-                    <p class="text-3xl font-bold text-gray-800" id="cctvCount">0</p>
-                </div>
-                <div class="p-3 bg-purple-100 rounded-xl">
-                    <span class="material-icons-round text-purple-600 text-2xl">videocam</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="text-gray-600">Sumber Sistem</span>
-                    <span class="font-semibold text-gray-700" id="systemCount">0</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill bg-gradient-to-r from-purple-500 to-pink-500" style="width: 0%" id="sourceProgressBar"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="mdc-card p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Track ID Unik</p>
-                    <p class="text-3xl font-bold text-gray-800" id="uniqueTracks">0</p>
-                </div>
-                <div class="p-3 bg-yellow-100 rounded-xl">
-                    <span class="material-icons-round text-yellow-600 text-2xl">tag</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="text-gray-600">Track aktif</span>
-                    <span class="font-semibold text-green-600" id="activeTracks">0</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill bg-gradient-to-r from-yellow-500 to-orange-500" style="width: 0%" id="trackProgressBar"></div>
-                </div>
-            </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
+            <p class="text-gray-500 text-sm">Jam Tersibuk</p>
+            <p class="text-3xl font-bold text-gray-800 mt-1" id="busyHour">-</p>
         </div>
     </div>
 
-    <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Daily Trend Chart -->
-        <div class="mdc-card p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-semibold text-gray-800">Tren Harian Kendaraan</h3>
-                <select id="trendPeriod" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-                    <option value="7">7 Hari</option>
-                    <option value="14">14 Hari</option>
-                    <option value="30">30 Hari</option>
-                    <option value="90">90 Hari</option>
-                </select>
-            </div>
-            <div class="chart-container">
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+            <h3 class="font-semibold text-gray-800 mb-4">Tren Harian</h3>
+            <div class="relative h-64">
                 <canvas id="dailyTrendChart"></canvas>
             </div>
         </div>
         
-        <!-- Vehicle Distribution Chart -->
-        <div class="mdc-card p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-6">Distribusi Jenis Kendaraan</h3>
-            <div class="chart-container">
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+            <h3 class="font-semibold text-gray-800 mb-4">Proporsi Kendaraan</h3>
+            <div class="relative h-64 flex justify-center">
                 <canvas id="vehicleDistributionChart"></canvas>
-            </div>
-            <div class="mt-4 grid grid-cols-4 gap-4 text-sm" id="vehicleDistributionLegend">
-                <!-- Legend akan diisi oleh JavaScript -->
             </div>
         </div>
     </div>
 
-    <!-- Hourly Traffic Chart -->
-    <div class="mdc-card p-6 mb-8">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-semibold text-gray-800">Distribusi per Jam</h3>
-            <div class="flex items-center gap-2">
-                <select id="hourlyDate" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-                    <!-- Options akan diisi oleh JavaScript -->
-                </select>
-            </div>
-        </div>
-        <div class="chart-container">
+    <div class="bg-white p-6 rounded-xl shadow-sm mb-8">
+        <h3 class="font-semibold text-gray-800 mb-4">Distribusi Lalu Lintas per Jam</h3>
+        <div class="relative h-64">
             <canvas id="hourlyTrafficChart"></canvas>
         </div>
     </div>
 
-    <!-- Detailed Data Table -->
-    <div class="mdc-card p-6">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-800">Data Detail Deteksi</h3>
-                <p class="text-sm text-gray-500">Rincian data kendaraan dari database</p>
-            </div>
-            <div class="flex gap-3">
-                <button id="btnPrintTable" class="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium flex items-center gap-2">
-                    <span class="material-icons-round">print</span>
-                    Print
-                </button>
-                <button id="btnDownloadCSV" class="px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center gap-2">
-                    <span class="material-icons-round">download</span>
-                    Download CSV
-                </button>
-                <button id="btnDownloadJSON" class="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium flex items-center gap-2">
-                    <span class="material-icons-round">code</span>
-                    JSON
-                </button>
-            </div>
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="font-semibold text-gray-800">Data Deteksi Detail</h3>
+            <span class="text-sm text-gray-500" id="recordCountInfo">0 Data</span>
         </div>
-        
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="w-full text-sm text-left text-gray-700">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-600">
+                <thead class="bg-gray-50 text-gray-700 uppercase font-semibold">
                     <tr>
-                        <th class="px-6 py-3 font-semibold">ID</th>
-                        <th class="px-6 py-3 font-semibold">Waktu Melintas</th>
-                        <th class="px-6 py-3 font-semibold">Jenis Kendaraan</th>
-                        <th class="px-6 py-3 font-semibold">Track ID</th>
-                        <th class="px-6 py-3 font-semibold">Sumber Video</th>
+                        <th class="px-6 py-3">ID</th>
+                        <th class="px-6 py-3">Waktu</th>
+                        <th class="px-6 py-3">Jenis</th>
+                        <th class="px-6 py-3">Track ID</th>
+                        <th class="px-6 py-3">Sumber</th>
                     </tr>
                 </thead>
-                <tbody id="reportTableBody" class="divide-y divide-gray-200">
-                    <!-- Data akan diisi oleh JavaScript -->
-                </tbody>
+                <tbody id="tableBody" class="divide-y divide-gray-100">
+                    </tbody>
             </table>
         </div>
-        
-        <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-500">
-                Menampilkan <span id="currentPage">1-10</span> dari <span id="totalRecords">0</span> data
-            </div>
-            <div class="flex gap-2">
-                <button id="btnPrevPage" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>
-                    <span class="material-icons-round">chevron_left</span>
-                </button>
-                <button id="btnNextPage" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>
-                    <span class="material-icons-round">chevron_right</span>
-                </button>
-            </div>
+        <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+            <button id="btnPrev" class="px-4 py-2 bg-white border rounded hover:bg-gray-50 disabled:opacity-50" disabled>Previous</button>
+            <span id="pageInfo">Page 1</span>
+            <button id="btnNext" class="px-4 py-2 bg-white border rounded hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
         </div>
     </div>
 </div>
@@ -289,721 +157,208 @@
 
 {% block scripts %}
 <script>
-    // Page variables
+    // --- VARIABLES ---
+    let fullData = [];
     let currentPage = 1;
     const itemsPerPage = 10;
-    let reportData = [];
-    let charts = {};
-    let uniqueDates = [];
-    let vehicleTypes = {};
-    let lastDataUpdate = null;
     
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        initEventListeners();
-        loadDataFromDB();
+    // Simpan instance chart agar bisa di-destroy/update
+    let charts = { daily: null, distribution: null, hourly: null };
+
+    // --- INIT ---
+    document.addEventListener('DOMContentLoaded', () => {
+        handlePeriodChange(); // Set tanggal default
+        loadDataFromDB();     // Load data awal
+
+        // Event Listener Pagination
+        document.getElementById('btnPrev').addEventListener('click', () => changePage(-1));
+        document.getElementById('btnNext').addEventListener('click', () => changePage(1));
     });
-    
-    // Load data from database
-    async function loadDataFromDB() {
-        showNotification('Memuat data dari database...', 'info');
-        
-        try {
-            const response = await fetch('/api/vehicle-reports');
-            const data = await response.json();
-            
-            reportData = data.records || [];
-            uniqueDates = data.dates || [];
-            vehicleTypes = data.vehicle_types || {};
-            
-            updateStatistics(data.summary);
-            populateReportTable();
-            initCharts(data.chart_data);
-            updateVehicleDistributionLegend(vehicleTypes);
-            populateDateSelect(uniqueDates);
-            
-            lastDataUpdate = new Date();
-            document.getElementById('lastUpdateTime').textContent = 
-                lastDataUpdate.toLocaleTimeString('id-ID');
-            
-            showNotification('Data berhasil dimuat', 'success');
-        } catch (error) {
-            console.error('Error loading data:', error);
-            showNotification('Gagal memuat data dari database', 'error');
-            
-            // Fallback to sample data if API fails
-            generateSampleData();
-        }
-    }
-    
-    // Generate sample data (fallback)
-    function generateSampleData() {
-        const sampleData = {
-            records: [
-                {
-                    id: 1,
-                    waktu_melintas: "2026-02-01 00:35:44",
-                    jenis_kendaraan: "mobil",
-                    track_id: 2,
-                    video_source: "CCTV_Main"
-                },
-                {
-                    id: 2,
-                    waktu_melintas: "2026-02-01 00:36:50",
-                    jenis_kendaraan: "mobil",
-                    track_id: 10,
-                    video_source: "CCTV Main"
-                },
-                {
-                    id: 3,
-                    waktu_melintas: "2026-02-01 04:42:26",
-                    jenis_kendaraan: "motor",
-                    track_id: 10,
-                    video_source: "System"
-                }
-            ],
-            summary: {
-                total_vehicles: 3,
-                daily_count: 2,
-                cctv_count: 2,
-                system_count: 1,
-                unique_tracks: 2,
-                active_tracks: 3
-            },
-            chart_data: {
-                daily_trend: {
-                    labels: ['01 Feb', '02 Feb', '03 Feb'],
-                    data: [3, 5, 2]
-                },
-                vehicle_distribution: {
-                    labels: ['Mobil', 'Motor'],
-                    data: [2, 1]
-                },
-                hourly_distribution: {
-                    labels: ['00:00', '01:00', '02:00', '03:00', '04:00'],
-                    data: [1, 0, 0, 0, 2]
-                }
-            },
-            vehicle_types: {
-                'mobil': 2,
-                'motor': 1
-            }
-        };
-        
-        reportData = sampleData.records;
-        updateStatistics(sampleData.summary);
-        populateReportTable();
-        initCharts(sampleData.chart_data);
-    }
-    
-    // Update statistics
-    function updateStatistics(summary) {
-        const totalVehicles = summary.total_vehicles || 0;
-        const dailyCount = summary.daily_count || 0;
-        const cctvCount = summary.cctv_count || 0;
-        const systemCount = summary.system_count || 0;
-        const uniqueTracks = summary.unique_tracks || 0;
-        const activeTracks = summary.active_tracks || 0;
-        
-        // Update display
-        document.getElementById('totalVehiclesReport').textContent = totalVehicles;
-        document.getElementById('dailyCount').textContent = dailyCount;
-        document.getElementById('cctvCount').textContent = cctvCount;
-        document.getElementById('systemCount').textContent = systemCount;
-        document.getElementById('uniqueTracks').textContent = uniqueTracks;
-        document.getElementById('activeTracks').textContent = activeTracks;
-        
-        // Update progress bars
-        const maxTotal = Math.max(totalVehicles, 100);
-        const totalPercentage = (totalVehicles / maxTotal) * 100;
-        document.getElementById('totalProgressBar').style.width = `${totalPercentage}%`;
-        
-        const dailyPercentage = (dailyCount / Math.max(dailyCount, 50)) * 100;
-        document.getElementById('dailyProgressBar').style.width = `${dailyPercentage}%`;
-        
-        const totalSources = cctvCount + systemCount;
-        const sourcePercentage = totalSources > 0 ? (cctvCount / totalSources) * 100 : 0;
-        document.getElementById('sourceProgressBar').style.width = `${sourcePercentage}%`;
-        
-        const trackPercentage = (activeTracks / Math.max(activeTracks, 50)) * 100;
-        document.getElementById('trackProgressBar').style.width = `${trackPercentage}%`;
-    }
-    
-    // Initialize charts with real data
-    function initCharts(chartData) {
-        // Daily Trend Chart
-        const trendCtx = document.getElementById('dailyTrendChart');
-        if (trendCtx && chartData.daily_trend) {
-            charts.dailyTrend = new Chart(trendCtx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: chartData.daily_trend.labels,
-                    datasets: [{
-                        label: 'Jumlah Kendaraan',
-                        data: chartData.daily_trend.data,
-                        borderColor: '#5D3EBC',
-                        backgroundColor: 'rgba(93, 62, 188, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#5D3EBC'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Jumlah Kendaraan',
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Vehicle Distribution Chart
-        const distributionCtx = document.getElementById('vehicleDistributionChart');
-        if (distributionCtx && chartData.vehicle_distribution) {
-            const colors = ['#3B82F6', '#10B981', '#5D3EBC', '#F59E0B', '#EF4444', '#8B5CF6'];
-            
-            charts.vehicleDistribution = new Chart(distributionCtx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: chartData.vehicle_distribution.labels,
-                    datasets: [{
-                        data: chartData.vehicle_distribution.data,
-                        backgroundColor: colors.slice(0, chartData.vehicle_distribution.labels.length),
-                        borderWidth: 2,
-                        borderColor: '#FFFFFF'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = Math.round((context.parsed / total) * 100);
-                                    return `${context.label}: ${context.parsed} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Hourly Traffic Chart
-        const hourlyCtx = document.getElementById('hourlyTrafficChart');
-        if (hourlyCtx && chartData.hourly_distribution) {
-            charts.hourlyTraffic = new Chart(hourlyCtx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: chartData.hourly_distribution.labels,
-                    datasets: [{
-                        label: 'Jumlah Kendaraan',
-                        data: chartData.hourly_distribution.data,
-                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                        borderColor: '#10B981',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Jumlah Kendaraan',
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                maxRotation: 0,
-                                callback: function (value, index) {
-                                    return index % 3 === 0 ? this.getLabelForValue(value) : '';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    // Update vehicle distribution legend
-    function updateVehicleDistributionLegend(vehicleTypes) {
-        const legendContainer = document.getElementById('vehicleDistributionLegend');
-        if (!legendContainer) return;
-        
-        const total = Object.values(vehicleTypes).reduce((sum, count) => sum + count, 0);
-        const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500', 'bg-indigo-500'];
-        
-        let legendHTML = '';
-        let colorIndex = 0;
-        
-        for (const [type, count] of Object.entries(vehicleTypes)) {
-            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-            legendHTML += `
-                <div class="text-center">
-                    <div class="w-3 h-3 ${colors[colorIndex % colors.length]} rounded-full mx-auto mb-1"></div>
-                    <span class="text-gray-700 text-xs">${type}: ${percentage}%</span>
-                </div>
-            `;
-            colorIndex++;
-        }
-        
-        legendContainer.innerHTML = legendHTML;
-    }
-    
-    // Populate date select dropdown
-    function populateDateSelect(dates) {
-        const select = document.getElementById('hourlyDate');
-        if (!select) return;
-        
-        select.innerHTML = '<option value="today">Hari Ini</option>';
-        
-        dates.forEach(date => {
-            const dateObj = new Date(date);
-            const formattedDate = dateObj.toLocaleDateString('id-ID', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short'
-            });
-            select.innerHTML += `<option value="${date}">${formattedDate}</option>`;
-        });
-    }
-    
-    // Populate report table with database data
-    function populateReportTable() {
-        const tbody = document.getElementById('reportTableBody');
-        if (!tbody) return;
-        
-        // Calculate pagination
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = Math.min(startIndex + itemsPerPage, reportData.length);
-        const pageData = reportData.slice(startIndex, endIndex);
-        
-        tbody.innerHTML = '';
-        
-        if (reportData.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                    <span class="material-icons-round text-4xl mb-2 text-gray-300">inbox</span>
-                    <p class="text-lg">Tidak ada data ditemukan</p>
-                    <p class="text-sm mt-1">Data akan muncul saat ada kendaraan terdeteksi</p>
-                </td>
-            `;
-            tbody.appendChild(row);
-        } else {
-            pageData.forEach((item, index) => {
-                const waktu = new Date(item.waktu_melintas);
-                const waktuStr = waktu.toLocaleString('id-ID', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-                row.innerHTML = `
-                    <td class="px-6 py-4 font-medium">${item.id}</td>
-                    <td class="px-6 py-4">${waktuStr}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-3 py-1 rounded-full text-xs ${getVehicleTypeClass(item.jenis_kendaraan)}">
-                            ${item.jenis_kendaraan}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 font-mono">${item.track_id}</td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                            <span class="material-icons-round text-sm ${item.video_source.includes('CCTV') ? 'text-blue-500' : 'text-green-500'}">
-                                ${item.video_source.includes('CCTV') ? 'videocam' : 'memory'}
-                            </span>
-                            <span>${item.video_source}</span>
-                        </div>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        }
-        
-        // Update pagination info
-        updatePaginationInfo();
-    }
-    
-    // Get CSS class for vehicle type
-    function getVehicleTypeClass(type) {
-        const classes = {
-            'mobil': 'bg-blue-100 text-blue-800',
-            'motor': 'bg-green-100 text-green-800',
-            'Golongan II': 'bg-purple-100 text-purple-800',
-            'Golongan IVA': 'bg-yellow-100 text-yellow-800',
-            'Golongan TT': 'bg-red-100 text-red-800'
-        };
-        
-        return classes[type] || 'bg-gray-100 text-gray-800';
-    }
-    
-    // Update pagination info
-    function updatePaginationInfo() {
-        const totalRecords = reportData.length;
-        const start = ((currentPage - 1) * itemsPerPage) + 1;
-        const end = Math.min(currentPage * itemsPerPage, totalRecords);
-        
-        document.getElementById('currentPage').textContent = 
-            totalRecords > 0 ? `${start}-${end}` : '0-0';
-        document.getElementById('totalRecords').textContent = totalRecords;
-        
-        // Update button states
-        document.getElementById('btnPrevPage').disabled = currentPage === 1 || totalRecords === 0;
-        document.getElementById('btnNextPage').disabled = 
-            currentPage * itemsPerPage >= totalRecords || totalRecords === 0;
-    }
-    
-    // Initialize event listeners
-    function initEventListeners() {
-        // Period selector
-        const periodSelect = document.getElementById('reportPeriod');
-        if (periodSelect) {
-            periodSelect.addEventListener('change', handlePeriodChange);
-        }
-        
-        // Date inputs
-        const dateInputs = ['startDate', 'endDate'];
-        dateInputs.forEach(id => {
-            const input = document.getElementById(id);
-            if (input) {
-                input.addEventListener('change', handleDateChange);
-            }
-        });
-        
-        // Apply filter button
-        const btnApplyFilter = document.getElementById('btnApplyFilter');
-        if (btnApplyFilter) {
-            btnApplyFilter.addEventListener('click', applyFilters);
-        }
-        
-        // Vehicle type selector
-        const vehicleType = document.getElementById('vehicleType');
-        if (vehicleType) {
-            vehicleType.addEventListener('change', applyFilters);
-        }
-        
-        // Trend period selector
-        const trendPeriod = document.getElementById('trendPeriod');
-        if (trendPeriod) {
-            trendPeriod.addEventListener('change', updateTrendChart);
-        }
-        
-        // Refresh button
-        const btnGenerateReport = document.getElementById('btnGenerateReport');
-        if (btnGenerateReport) {
-            btnGenerateReport.addEventListener('click', function() {
-                loadDataFromDB();
-            });
-        }
-        
-        // Export buttons
-        const btnExportPDF = document.getElementById('btnExportPDF');
-        if (btnExportPDF) {
-            btnExportPDF.addEventListener('click', exportPDF);
-        }
-        
-        const btnExportExcel = document.getElementById('btnExportExcel');
-        if (btnExportExcel) {
-            btnExportExcel.addEventListener('click', exportExcel);
-        }
-        
-        const btnPrintTable = document.getElementById('btnPrintTable');
-        if (btnPrintTable) {
-            btnPrintTable.addEventListener('click', printTable);
-        }
-        
-        const btnDownloadCSV = document.getElementById('btnDownloadCSV');
-        if (btnDownloadCSV) {
-            btnDownloadCSV.addEventListener('click', downloadCSV);
-        }
-        
-        const btnDownloadJSON = document.getElementById('btnDownloadJSON');
-        if (btnDownloadJSON) {
-            btnDownloadJSON.addEventListener('click', downloadJSON);
-        }
-        
-        // Hourly date selector
-        const hourlyDate = document.getElementById('hourlyDate');
-        if (hourlyDate) {
-            hourlyDate.addEventListener('change', updateHourlyChart);
-        }
-        
-        // Pagination buttons
-        const btnPrevPage = document.getElementById('btnPrevPage');
-        const btnNextPage = document.getElementById('btnNextPage');
-        
-        if (btnPrevPage) {
-            btnPrevPage.addEventListener('click', goToPreviousPage);
-        }
-        
-        if (btnNextPage) {
-            btnNextPage.addEventListener('click', goToNextPage);
-        }
-        
-        // Auto-refresh data every 30 seconds
-        setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                loadDataFromDB();
-            }
-        }, 30000);
-    }
-    
-    // Handle period change
+
+    // --- 1. FILTER DATE LOGIC ---
     function handlePeriodChange() {
         const period = document.getElementById('reportPeriod').value;
+        const startIn = document.getElementById('startDate');
+        const endIn = document.getElementById('endDate');
         const today = new Date();
-        const startDate = document.getElementById('startDate');
-        const endDate = document.getElementById('endDate');
-        
-        switch (period) {
-            case 'today':
-                setDates(today, today);
-                break;
-            case 'yesterday':
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                setDates(yesterday, yesterday);
-                break;
-            case 'week':
-                const weekAgo = new Date(today);
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                setDates(weekAgo, today);
-                break;
-            case 'month':
-                const monthAgo = new Date(today);
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                setDates(monthAgo, today);
-                break;
-            case 'quarter':
-                const quarterAgo = new Date(today);
-                quarterAgo.setMonth(quarterAgo.getMonth() - 3);
-                setDates(quarterAgo, today);
-                break;
-            case 'year':
-                const yearAgo = new Date(today);
-                yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-                setDates(yearAgo, today);
-                break;
-            case 'custom':
-                startDate.disabled = false;
-                endDate.disabled = false;
-                return;
+        const start = new Date();
+
+        if (period === 'custom') {
+            startIn.disabled = false; endIn.disabled = false; return;
         }
-        
-        startDate.disabled = true;
-        endDate.disabled = true;
-        
-        setTimeout(applyFilters, 100);
+
+        if (period === 'today') { /* start is today */ }
+        else if (period === 'week') { start.setDate(today.getDate() - 7); }
+        else if (period === 'month') { start.setMonth(today.getMonth() - 1); }
+
+        startIn.value = start.toISOString().split('T')[0];
+        endIn.value = today.toISOString().split('T')[0];
     }
-    
-    // Set date values
-    function setDates(start, end) {
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        document.getElementById('endDate').value = end.toISOString().split('T')[0];
-    }
-    
-    // Handle date change
-    function handleDateChange() {
-        document.getElementById('reportPeriod').value = 'custom';
-    }
-    
-    // Apply filters
-    function applyFilters() {
-        showNotification('Menerapkan filter...', 'info');
-        
-        // In a real implementation, this would send filter parameters to the API
-        setTimeout(() => {
-            loadDataFromDB();
-            showNotification('Filter berhasil diterapkan', 'success');
-        }, 500);
-    }
-    
-    // Go to previous page
-    function goToPreviousPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            populateReportTable();
+
+    // --- 2. LOAD DATA FROM API ---
+    async function loadDataFromDB() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const type = document.getElementById('vehicleType').value;
+
+        // Loading UI
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="5" class="text-center py-4">Memuat data...</td></tr>';
+
+        try {
+            const res = await fetch(`/api/vehicle-reports?start_date=${start}&end_date=${end}&vehicle_type=${type}`);
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                fullData = data.records;
+                
+                // Update UI Components
+                updateStats(fullData);
+                renderChartsFromData(fullData);
+                currentPage = 1;
+                renderTable();
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Gagal koneksi ke server</td></tr>';
         }
     }
-    
-    // Go to next page
-    function goToNextPage() {
-        if (currentPage * itemsPerPage < reportData.length) {
-            currentPage++;
-            populateReportTable();
-        }
-    }
-    
-    // Update trend chart
-    function updateTrendChart() {
-        const period = parseInt(document.getElementById('trendPeriod').value);
-        showNotification(`Memuat data tren ${period} hari...`, 'info');
-        
-        // In real implementation, fetch new data based on period
-        loadDataFromDB();
-    }
-    
-    // Update hourly chart
-    function updateHourlyChart() {
-        const selectedDate = document.getElementById('hourlyDate').value;
-        showNotification(`Memuat data untuk ${selectedDate}...`, 'info');
-        
-        // In real implementation, fetch hourly data for selected date
-        loadDataFromDB();
-    }
-    
-    // Export functions
-    function exportPDF() {
-        showNotification('PDF report berhasil di-generate', 'success');
-    }
-    
-    function exportExcel() {
-        showNotification('Excel report berhasil di-generate', 'success');
-    }
-    
-    function printTable() {
-        window.print();
-        showNotification('Mempersiapkan print...', 'info');
-    }
-    
-    function downloadCSV() {
-        if (reportData.length === 0) {
-            showNotification('Tidak ada data untuk diexport', 'error');
-            return;
-        }
-        
-        // Create CSV content
-        let csv = 'ID,Waktu Melintas,Jenis Kendaraan,Track ID,Sumber Video\n';
-        
-        reportData.forEach(item => {
-            csv += `${item.id},"${item.waktu_melintas}","${item.jenis_kendaraan}",${item.track_id},"${item.video_source}"\n`;
+
+    // --- 3. RENDER CHARTS (LOGIC CLIENT-SIDE) ---
+    function renderChartsFromData(data) {
+        // A. Proses Data untuk Chart
+        const dateCounts = {};
+        const typeCounts = {};
+        const hourCounts = new Array(24).fill(0);
+
+        data.forEach(item => {
+            // Asumsi format: "YYYY-MM-DD HH:MM:SS"
+            if (!item.waktu_melintas) return;
+            
+            const datePart = item.waktu_melintas.split(' ')[0]; // YYYY-MM-DD
+            const timePart = item.waktu_melintas.split(' ')[1]; // HH:MM:SS
+            const hour = parseInt(timePart.split(':')[0]);      // HH
+
+            // Count Daily
+            dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
+            // Count Type
+            typeCounts[item.jenis_kendaraan] = (typeCounts[item.jenis_kendaraan] || 0) + 1;
+            // Count Hourly
+            if (!isNaN(hour)) hourCounts[hour]++;
         });
-        
-        // Create download link
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.href = url;
-        link.download = `laporan_kendaraan_${new Date().toISOString().split('T')[0]}.csv`;
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showNotification('CSV berhasil didownload', 'success');
+
+        // B. Render Daily Trend (Line)
+        const ctxDaily = document.getElementById('dailyTrendChart').getContext('2d');
+        if (charts.daily) charts.daily.destroy();
+        charts.daily = new Chart(ctxDaily, {
+            type: 'line',
+            data: {
+                labels: Object.keys(dateCounts).sort(),
+                datasets: [{
+                    label: 'Jumlah Kendaraan',
+                    data: Object.keys(dateCounts).sort().map(k => dateCounts[k]),
+                    borderColor: '#5D3EBC', backgroundColor: 'rgba(93, 62, 188, 0.1)',
+                    fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // C. Render Distribution (Doughnut)
+        const ctxDist = document.getElementById('vehicleDistributionChart').getContext('2d');
+        if (charts.distribution) charts.distribution.destroy();
+        charts.distribution = new Chart(ctxDist, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(typeCounts),
+                datasets: [{
+                    data: Object.values(typeCounts),
+                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+
+        // D. Render Hourly (Bar)
+        const ctxHourly = document.getElementById('hourlyTrafficChart').getContext('2d');
+        if (charts.hourly) charts.hourly.destroy();
+        charts.hourly = new Chart(ctxHourly, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                datasets: [{
+                    label: 'Trafik per Jam',
+                    data: hourCounts,
+                    backgroundColor: '#10B981', borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
     }
-    
-    function downloadJSON() {
-        if (reportData.length === 0) {
-            showNotification('Tidak ada data untuk diexport', 'error');
+
+    // --- 4. RENDER TABLE & PAGINATION ---
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        
+        if (fullData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Tidak ada data</td></tr>';
             return;
         }
-        
-        const jsonData = {
-            generated_at: new Date().toISOString(),
-            filters: {
-                start_date: document.getElementById('startDate').value,
-                end_date: document.getElementById('endDate').value,
-                vehicle_type: document.getElementById('vehicleType').value
-            },
-            summary: {
-                total_vehicles: document.getElementById('totalVehiclesReport').textContent,
-                daily_count: document.getElementById('dailyCount').textContent,
-                cctv_count: document.getElementById('cctvCount').textContent,
-                system_count: document.getElementById('systemCount').textContent,
-                unique_tracks: document.getElementById('uniqueTracks').textContent,
-                active_tracks: document.getElementById('activeTracks').textContent
-            },
-            data: reportData
-        };
-        
-        const jsonString = JSON.stringify(jsonData, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.href = url;
-        link.download = `laporan_kendaraan_${new Date().toISOString().split('T')[0]}.json`;
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showNotification('JSON berhasil didownload', 'success');
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = fullData.slice(start, end);
+
+        pageData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 border-b";
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-mono text-xs">${row.id}</td>
+                <td class="px-6 py-4">${row.waktu_melintas}</td>
+                <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">${row.jenis_kendaraan}</span></td>
+                <td class="px-6 py-4">${row.track_id}</td>
+                <td class="px-6 py-4 text-xs text-gray-500">${row.video_source}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Update Info
+        document.getElementById('recordCountInfo').textContent = `${fullData.length} Data Ditemukan`;
+        document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${Math.ceil(fullData.length / itemsPerPage)}`;
+        document.getElementById('btnPrev').disabled = currentPage === 1;
+        document.getElementById('btnNext').disabled = end >= fullData.length;
     }
-    
-    // Show notification
-    function showNotification(message, type = 'info') {
-        // Simple notification implementation
-        console.log(`${type.toUpperCase()}: ${message}`);
+
+    function changePage(dir) { currentPage += dir; renderTable(); }
+
+    function updateStats(data) {
+        document.getElementById('totalVehicles').textContent = data.length;
+        // Hitung simple stats lain jika perlu
+    }
+
+    // --- 5. EXPORT FUNCTIONS ---
+    function exportToPDF() {
+        if (!fullData.length) return alert("Data kosong!");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
         
-        // You can implement a proper notification system here
-        const notification = document.createElement('div');
-        notification.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg text-white ${
-            type === 'success' ? 'bg-green-500' :
-            type === 'error' ? 'bg-red-500' :
-            type === 'info' ? 'bg-blue-500' : 'bg-gray-500'
-        }`;
-        notification.textContent = message;
+        doc.text("Laporan Deteksi Kendaraan", 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Dicetak pada: ${new Date().toLocaleString()}`, 14, 28);
         
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 3000);
+        const rows = fullData.map(d => [d.id, d.waktu_melintas, d.jenis_kendaraan, d.track_id, d.video_source]);
+        doc.autoTable({ head: [['ID', 'Waktu', 'Jenis', 'Track', 'Sumber']], body: rows, startY: 35 });
+        doc.save('Laporan_Kendaraan.pdf');
+    }
+
+    function exportToExcel() {
+        if (!fullData.length) return alert("Data kosong!");
+        const ws = XLSX.utils.json_to_sheet(fullData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+        XLSX.writeFile(wb, 'Laporan_Kendaraan.xlsx');
     }
 </script>
 {% endblock %}
